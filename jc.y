@@ -162,6 +162,8 @@ funcall:
          char codeBuffer[512];
          codeBuffer[0] = '\0';
          const char *regs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+         
+         /* load args into registers regardless of fn type */
          for (int i = 0; i < callArgCount; i++) {
              if (i >= MAX_ARGS) {
                  fprintf(stderr, "too many args (more than 6) not supported.\n");
