@@ -108,10 +108,10 @@ functions:
 
 /* fn def: no params, block of stmts */
 function:
-    KWFUNCTION ID LPAREN RPAREN LBRACE statements RBRACE {
+    KWFUNCTION ID LPAREN arguments RPAREN LBRACE statements RBRACE {
          char buffer[1024];
-         /* gen label for fn, add prologue/epilogue */
-         sprintf(buffer, "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $6);
+         /* gen label for fn + handle params */
+         sprintf(buffer, "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $7);
          $$ = strdup(buffer);
     }
 ;
