@@ -14,9 +14,24 @@ int stringCount = 0;
 /* help fn to add string constant (strips quotes) */
 int addString(char *s) {
     int len = strlen(s);
-    char *stripped = (char *) malloc(len - 1);
-    strncpy(stripped, s+1, len-2);
-    stripped[len-2] = '\0';
+    if (len < 2) {
+        fprintf(stderr, "error: string too short to strip quotes\n");
+        exit(1);
+    }
+    char *stripped = (char *) malloc(len - 1); // Allocate enough space
+    if (!stripped) {
+        fprintf(stderr, "error: memory allocation failed\n");
+        exit(1);
+    }
+    strncpy(stripped, s+1, len-2); // copy everything except first and last char
+    stripped[len-2] = '\0'; // make sure it's null terminated
+    
+    if (stringCount >= MAX_STRINGS) {
+        fprintf(stderr, "error: too many strings\n");
+        free(stripped);
+        exit(1);
+    }
+    
     stringTable[stringCount] = stripped;
     return stringCount++;
 }
@@ -111,7 +126,7 @@ function:
     KWFUNCTION ID LPAREN RPAREN LBRACE statements RBRACE {
          char buffer[1024];
          /* gen label for fn + handle params */
-         sprintf(buffer, "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $7);
+         sprintf(buffer, "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $6);
          $$ = strdup(buffer);
     }
 ;
