@@ -156,7 +156,7 @@ funcall:
              if (callArgs[i].type == ARG_STRING) {
                  sprintf(temp, "\tleaq\t.SC%d(%%rip), %s\n", callArgs[i].ival, regs[i]);
              } else if (callArgs[i].type == ARG_NUMBER) {
-                 sprintf(temp, "\tmovl\t$%d, %s\n", callArgs[i].ival, regs[i]);
+                 sprintf(temp, "\tmovq\t$%d, %s\n", callArgs[i].ival, regs[i]);
              }
              strcat(codeBuffer, temp);
          }
