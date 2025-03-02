@@ -107,6 +107,10 @@ wholeprogram:
       printCodePrologue();
       printf("%s", $2);
       printCodeEpilogue();
+      
+      /* Free memory to prevent leaks */
+      free($1);
+      free($2);
     }
 ;
 
@@ -114,9 +118,16 @@ wholeprogram:
 functions:
     function functions {
          int len = strlen($1) + strlen($2) + 1;
-         $$ = (char *) malloc(len);
-         strcpy($$, $1);
-         strcat($$, $2);
+         char* result = (char *) malloc(len);
+         if (!result) {
+             fprintf(stderr, "error: memory allocation failed\n");
+             exit(1);
+         }
+         strcpy(result, $1);
+         strcat(result, $2);
+         free($1);
+         free($2);
+         $$ = result;
     }
     | /* empty */ { $$ = strdup(""); }
 ;
@@ -126,7 +137,9 @@ function:
     KWFUNCTION ID LPAREN RPAREN LBRACE statements RBRACE {
          char buffer[1024];
          /* gen label for fn + handle params */
-         sprintf(buffer, "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $6);
+         snprintf(buffer, sizeof(buffer), "%s:\n\tpushq\t%%rbp\n\tmovq\t%%rsp, %%rbp\n%s\tleave\n\tret\n", $2, $6);
+         free($2);
+         free($6);
          $$ = strdup(buffer);
     }
 ;
@@ -140,9 +153,16 @@ program:
 statements:
     statement statements {
          int len = strlen($1) + strlen($2) + 1;
-         $$ = (char *) malloc(len);
-         strcpy($$, $1);
-         strcat($$, $2);
+         char* result = (char *) malloc(len);
+         if (!result) {
+             fprintf(stderr, "error: memory allocation failed\n");
+             exit(1);
+         }
+         strcpy(result, $1);
+         strcat(result, $2);
+         free($1);
+         free($2);
+         $$ = result;
     }
     | /* empty */ { $$ = strdup(""); }
 ;
@@ -159,7 +179,7 @@ statement:
 */
 funcall:
     KWCALL ID LPAREN { callArgCount = 0; } arguments RPAREN SEMICOLON {
-         char codeBuffer[512];
+         char codeBuffer[1024]; // Increased buffer size
          codeBuffer[0] = '\0';
          const char *regs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
          
@@ -171,15 +191,18 @@ funcall:
              }
              char temp[128];
              if (callArgs[i].type == ARG_STRING) {
-                 sprintf(temp, "\tleaq\t.SC%d(%%rip), %s\n", callArgs[i].ival, regs[i]);
+                 snprintf(temp, sizeof(temp), "\tleaq\t.SC%d(%%rip), %s\n", callArgs[i].ival, regs[i]);
              } else if (callArgs[i].type == ARG_NUMBER) {
-                 sprintf(temp, "\tmovq\t$%d, %s\n", callArgs[i].ival, regs[i]);
+                 snprintf(temp, sizeof(temp), "\tmovq\t$%d, %s\n", callArgs[i].ival, regs[i]);
              }
              strcat(codeBuffer, temp);
          }
          char callInstr[128];
-         sprintf(callInstr, "\tcall\t%s@PLT\n", $2);
+         snprintf(callInstr, sizeof(callInstr), "\tcall\t%s@PLT\n", $2);
          strcat(codeBuffer, callInstr);
+         
+         free($2);
+         free($5);
          $$ = strdup(codeBuffer);
     }
 ;
@@ -187,8 +210,20 @@ funcall:
 /* args list: empty or comma-sep list; no code generated here */
 arguments:
     /* empty */ { $$ = strdup(""); }
-    | argument { $$ = strdup(""); }
-    | argument COMMA arguments { $$ = strdup(""); }
+    | argument { $$ = $1; }
+    | argument COMMA arguments { 
+        int len = strlen($1) + strlen($3) + 1;
+        char* result = (char *) malloc(len);
+        if (!result) {
+            fprintf(stderr, "error: memory allocation failed\n");
+            exit(1);
+        }
+        strcpy(result, $1);
+        strcat(result, $3);
+        free($1);
+        free($3);
+        $$ = result;
+    }
 ;
 
 /* arg: either string literal or simple expr */
@@ -202,6 +237,7 @@ argument:
          callArgs[callArgCount].type = ARG_STRING;
          callArgs[callArgCount].ival = sid;
          callArgCount++;
+         free($1);
          $$ = strdup("");
     }
     | expression {
@@ -239,6 +275,12 @@ int main(int argc, char **argv) {
         yyin = file;
     }
     yyparse();
+    
+    // Clean up string table
+    for (int i = 0; i < stringCount; i++) {
+        free(stringTable[i]);
+    }
+    
     return 0;
 }
 
