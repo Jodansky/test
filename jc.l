@@ -16,7 +16,7 @@
 ")"                 { return RPAREN; }
 ";"                 { return SEMICOLON; }
 ","                 { return COMMA; }
-"\+"               { return PLUS; }
+"+"               { return PLUS; }
 [0-9]+              { yylval.ival = strtol(yytext, NULL, 10); return NUMBER; }
 
 \"[^\"]*\"         {
